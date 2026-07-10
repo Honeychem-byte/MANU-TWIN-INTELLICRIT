@@ -16,46 +16,53 @@ import os
 
 def plant_status():
 
-    data_folder = "data"
+    workbook_folder = "workbooks"
 
-    if os.path.exists(data_folder):
+    if os.path.exists(workbook_folder):
 
-        st.markdown("""
-        <style>
+        files = [
+            f for f in os.listdir(workbook_folder)
+            if f.endswith(".xlsx")
+        ]
 
-        .online{
-            display:inline-block;
-            width:15px;
-            height:15px;
-            background:#00ff00;
-            border-radius:50%;
-            box-shadow:0px 0px 15px lime;
-            animation:pulse 1.2s infinite;
-        }
+        if len(files) > 0:
 
-        @keyframes pulse{
-            0%{transform:scale(0.9);}
-            50%{transform:scale(1.2);}
-            100%{transform:scale(0.9);}
-        }
+            st.markdown("""
+            <style>
 
-        </style>
+            .online{
+                display:inline-block;
+                width:15px;
+                height:15px;
+                background:#00ff00;
+                border-radius:50%;
+                box-shadow:0px 0px 15px lime;
+                animation:pulse 1.2s infinite;
+            }
 
-        <div>
-            <span class="online"></span>
-            <span style="font-size:20px;font-weight:bold;">
-            &nbsp;PLANT ONLINE
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
+            @keyframes pulse{
+                0%{transform:scale(0.9);}
+                50%{transform:scale(1.2);}
+                100%{transform:scale(0.9);}
+            }
 
-    else:
+            </style>
 
-        st.markdown("""
-        <span style="color:red;font-size:20px;font-weight:bold;">
-        🔴 PLANT OFFLINE
-        </span>
-        """, unsafe_allow_html=True)
+            <div>
+                <span class="online"></span>
+                <span style="font-size:20px;font-weight:bold;">
+                &nbsp;PLANT ONLINE
+                </span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            return
+
+    st.markdown("""
+    <span style="color:red;font-size:20px;font-weight:bold;">
+    🔴 PLANT OFFLINE
+    </span>
+    """, unsafe_allow_html=True)
 def live_timestamp():
 
     # Current time in India

@@ -1,9 +1,20 @@
+import os
 import requests
 import streamlit as st
 
-# Read secrets from Streamlit Cloud
-API_KEY = st.secrets["API_KEY"]
-API_URL = st.secrets["API_URL"]
+# First try Streamlit Cloud Secrets
+try:
+    API_KEY = st.secrets["API_KEY"]
+    API_URL = st.secrets["API_URL"]
+
+# If running locally, use .env
+except Exception:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    API_KEY = os.getenv("API_KEY")
+    API_URL = os.getenv("API_URL")
 
 
 def ask_llm(question, context):
