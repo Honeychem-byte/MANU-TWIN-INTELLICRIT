@@ -1,13 +1,9 @@
-import os
-from urllib import response
 import requests
-from dotenv import load_dotenv
+import streamlit as st
 
-# Load variables from .env
-load_dotenv()
-
-API_KEY = os.getenv("API_KEY")
-API_URL = os.getenv("API_URL")
+# Read secrets from Streamlit Cloud
+API_KEY = st.secrets["API_KEY"]
+API_URL = st.secrets["API_URL"]
 
 
 def ask_llm(question, context):
@@ -63,10 +59,6 @@ Plant Data:
         json=payload,
         timeout=60
     )
-
-    print("Status Code:", response.status_code)
-    print("Response:")
-    print(response.text)
 
     response.raise_for_status()
 
