@@ -1,19 +1,38 @@
-import streamlit as st
-import plotly.graph_objects as go
-import pandas as pd
-from utils.historian import load_historian
-from utils.ai_engine import AIPlantEngineer
+import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-# -------------------------------------------------------
-# PAGE CONFIG
-# -------------------------------------------------------
-import os
+import streamlit as st
 
-# -------------------------------------------------------
+from utils.ai_engine import AIPlantEngineer
+from utils.asset_health import asset_health_chart
+from utils.dashboard import executive_dashboard
+from utils.historian import historian_dashboard
+
+# ==========================================================
+# PAGE CONFIG
+# ==========================================================
+
+st.set_page_config(
+    page_title="MANU TWIN INTELLICRIT",
+    page_icon="🏭",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ==========================================================
+# CACHE AI ENGINE
+# ==========================================================
+
+@st.cache_resource
+def load_ai_engine():
+    return AIPlantEngineer()
+
+engine = load_ai_engine()
+
+# ==========================================================
 # LIVE PLANT STATUS
-# -------------------------------------------------------
+# ==========================================================
 
 def plant_status():
 
@@ -51,7 +70,7 @@ def plant_status():
 
             <div>
                 <span class="online"></span>
-                <span style="font-size:20px;font-weight:bold;">
+                <span style="font-size:18px;font-weight:bold;">
                 &nbsp;PLANT ONLINE
                 </span>
             </div>
@@ -59,17 +78,19 @@ def plant_status():
 
             return
 
-    st.markdown("""
-    <span style="color:red;font-size:20px;font-weight:bold;">
-    🔴 PLANT OFFLINE
-    </span>
-    """, unsafe_allow_html=True)
+    st.error("🔴 PLANT OFFLINE")
+
+
+# ==========================================================
+# LIVE TIMESTAMP
+# ==========================================================
+
 def live_timestamp():
 
-    # Current time in India
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    now = datetime.now(
+        ZoneInfo("Asia/Kolkata")
+    )
 
-    # Historian data represents yesterday
     historian_date = now.date() - timedelta(days=1)
 
     st.markdown(f"""
@@ -78,329 +99,273 @@ def live_timestamp():
         padding:10px;
         border-radius:10px;
         border-left:5px solid #00C853;
-        margin-top:10px;
-        margin-bottom:10px;
     ">
 
-    <b>📅 Data Date :</b> {historian_date.strftime("%d-%b-%Y")}<br>
+    <b>📅 Historian Date :</b>
+    {historian_date.strftime("%d-%b-%Y")}
 
-    <b>🕒 Live Time (IST) :</b> {now.strftime("%H:%M:%S")}
+    <br>
+
+    <b>🕒 Live Time (IST):</b>
+    {now.strftime("%H:%M:%S")}
 
     </div>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True)
 
-st.set_page_config(
-    page_title="MANU TWIN INTELLICRIT",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# -------------------------------------------------------
+# ==========================================================
 # HEADER
-# -------------------------------------------------------
+# ==========================================================
 
-col1, col2 = st.columns([1, 6])
+logo_col, title_col = st.columns([1,6])
 
-with col1:
-    st.image("assets/logo.jpg", width=90)
+with logo_col:
 
-with col2:
-    st.title("🏭 MANU TWIN INTELLICRIT")
-    st.caption(
-        "AI-Powered Digital Twin for Root Cause Analysis, Predictive Maintenance & Process Optimization"
+    st.image(
+        "assets/logo.jpg",
+        width=90
     )
 
-st.markdown("---")
+with title_col:
 
-# -------------------------------------------------------
+    st.title("🏭 MANU TWIN INTELLICRIT")
+
+    st.caption(
+        "AI-Powered Digital Twin for Root Cause Analysis • Predictive Maintenance • Process Optimization"
+    )
+
+st.divider()
+
+# ==========================================================
 # SIDEBAR
-# -------------------------------------------------------
+# ==========================================================
 
 with st.sidebar:
 
-    st.image("assets/logo.jpg", width=150)
+    st.image(
+        "assets/logo.jpg",
+        width=140
+    )
 
     st.title("MANU TWIN")
 
     st.success("MANU TECH MINDS")
 
-    st.markdown("---")
+    st.divider()
 
     plant_status()
-    # -------------------------------------------------------
-    # LIVE DATA TIMESTAMP
-    # -------------------------------------------------------
 
     live_timestamp()
-    # -------------------------------------------------------
-# ASSET HEALTH DOUGHNUT CHART
-# -------------------------------------------------------
 
-def asset_health_chart():
+    st.divider()
 
-    try:
+    st.metric(
+        "AI Status",
+        "ACTIVE"
+    )
 
-        # Read Workbook 5
-        df = pd.read_excel(
-          "workbooks/Workbook_5_Digital_Twin_AI_Mapped.xlsx",
-            sheet_name="Asset Health Ranking",
-            header=1
-        )
+    st.metric(
+        "Platform",
+        "CONNECTED"
+    )
 
-        # Rename columns
-        df.columns = [
-            "Rank",
-            "Equipment",
-            "Health Score",
-            "Priority",
-            "Recommendation",
-            "Extra"
-        ]
-
-        # Remove the first duplicated header row
-        df = df[df["Rank"] != "Rank"]
-
-        # Convert health score to numeric
-        df["Health Score"] = pd.to_numeric(
-            df["Health Score"],
-            errors="coerce"
-        )
-
-        # Categorize assets
-        healthy = (df["Health Score"] >= 85).sum()
-        warning = ((df["Health Score"] >= 70) &
-                   (df["Health Score"] < 85)).sum()
-        critical = (df["Health Score"] < 70).sum()
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Pie(
-                labels=[
-                    "Healthy",
-                    "Warning",
-                    "Critical"
-                ],
-                values=[
-                    healthy,
-                    warning,
-                    critical
-                ],
-                hole=0.65,
-                textinfo="label+percent"
-            )
-        )
-
-        fig.update_layout(
-            title="Equipment Health Distribution",
-            height=420,
-            margin=dict(l=20, r=20, t=50, b=20)
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.metric(
-            "Overall Asset Health",
-            f"{df['Health Score'].mean():.1f}%"
-        )
-
-    except Exception as e:
-
-        st.error(f"Unable to load Asset Health Chart: {e}")
-
-    st.metric("AI Status", "🤖 ACTIVE")
-
-    st.metric("Historian", "✅ CONNECTED")
-
-    st.metric("Equipment Health", "98%")
-
-    st.markdown("---")
-
-    st.info("Industrial AI Digital Twin Platform")
-
-# -------------------------------------------------------
-# MAIN PAGE
-# -------------------------------------------------------
+    st.info(
+        "Industrial AI Digital Twin Platform"
+    )
 
 st.subheader(
-    "AI Agent for Root Cause Analysis & Process Optimization"
+    "🤖 AI Plant Engineer"
 )
 
-st.success("Welcome Team MANU TECH MINDS")
+st.success(
+    "Welcome Team MANU TECH MINDS"
+)
 
-st.markdown("## 🤖 AI Plant Engineer")
-
+# ==========================================================
+# AI CHAT
+# ==========================================================
 question = st.text_input(
     "Ask anything about your plant...",
     placeholder="Example: Why did Reactor R101 trip yesterday?"
 )
-
-engine = AIPlantEngineer()
-
-if st.button("🚀 Ask AI", use_container_width=True):
+engine = load_ai_engine()
+if st.button("🚀 Analyze with AI", use_container_width=True):
 
     if question.strip() == "":
+
         st.warning("Please enter a question.")
 
     else:
 
-        with st.spinner("AI is searching your historian and knowledge base..."):
+        with st.spinner("🔍 Searching Historian, Maintenance and Engineering Knowledge Base..."):
 
             response = engine.answer(question)
 
-        tab1, tab2, tab3 = st.tabs(
-            ["🧠 Root Cause", "📊 Evidence", "✅ Actions"]
+        root_tab, evidence_tab, action_tab = st.tabs(
+            [
+                "🧠 AI Analysis",
+                "📊 Engineering Evidence",
+                "✅ Recommended Actions"
+            ]
         )
 
-        with tab1:
+        with root_tab:
+
             st.markdown(response)
 
-        with tab2:
+        with evidence_tab:
+
+            st.success("### Data Sources Used")
+
+            st.markdown("""
+✅ Workbook 2 — AI Plant Historian
+
+✅ Workbook 3 — AI Analytics & Root Cause Analysis
+
+✅ Workbook 5 — Digital Twin & Asset Health
+
+✅ Workbook 6 — Maintenance Records
+
+✅ Workbook 7 — Process Safety
+
+✅ Workbook 11 — Engineering Knowledge Base
+
+✅ Workbook 12 — Asset Performance
+""")
+
+        with action_tab:
+
             st.info("""
-### Evidence Sources
+### Recommended Engineering Actions
 
-✅ Historian (Workbook 2)
+• Inspect affected equipment
 
-✅ AI Analytics & RCA (Workbook 3)
+• Review historian trends
 
-✅ Maintenance Records (Workbook 6)
+• Verify DCS alarms
 
-✅ Process Safety (Workbook 7)
+• Check maintenance history
 
-✅ Engineering Knowledge Base (Workbook 11)
+• Validate process conditions
 
-✅ Asset Performance (Workbook 12)
+• Review operating procedures
+
+• Generate maintenance work order
 """)
 
-        with tab3:
-            st.success("""
-### Immediate Recommendations
+st.divider()
 
-✔ Inspect affected equipment
+# ==========================================================
+# EXECUTIVE DASHBOARD
+# ==========================================================
 
-✔ Verify operating conditions
+executive_dashboard()
 
-✔ Check recent alarms
+# ==========================================================
+# DIGITAL TWIN DASHBOARD
+# ==========================================================
 
-✔ Review historian trends
-
-✔ Create maintenance work order
-""")
-
-st.markdown("---")
-
-st.subheader("📊 Executive Dashboard")
-
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("OEE", "91.8%", "+1.3%")
-c2.metric("Production", "128 MT", "+5 MT")
-c3.metric("Downtime", "38 min", "-12 min")
-c4.metric("AI Health", "96%", "+4%")
-
-st.markdown("---")
-
-left, right = st.columns([1, 2])
+left, right = st.columns([1,2])
 
 with left:
+
     asset_health_chart()
 
 with right:
+
     historian_dashboard()
+
+st.divider()
+# ==========================================================
+# SYSTEM STATUS
+# ==========================================================
+
+status1, status2 = st.columns(2)
+
+with status1:
+
+    st.subheader("🏭 Plant Status")
+
+    st.success("""
+✔ Production Running
+
+✔ Historian Connected
+
+✔ AI Monitoring Active
+
+✔ Digital Twin Active
+
+✔ Predictive Analytics Running
+
+✔ Process Safety Monitoring Enabled
+""")
+
+with status2:
+
+    st.subheader("🤖 Latest AI Recommendation")
+
+    st.warning("""
+Heat Exchanger E101 shows an increasing fouling trend.
+
+Recommended Action:
+
+• Schedule inspection within the next maintenance window.
+
+• Verify cooling water flow.
+
+• Review historical temperature trends.
+
+• Monitor exchanger efficiency continuously.
+
+Confidence: 96%
+""")
+
 st.divider()
 
-st.header("📈 LIVE DIGITAL TWIN HISTORIAN")
+# ==========================================================
+# QUICK ACTIONS
+# ==========================================================
 
-historian = load_historian()
+st.subheader("⚡ Quick AI Actions")
 
-if historian is None:
+col1, col2, col3 = st.columns(3)
 
-    st.error("Historian Workbook Not Found")
+with col1:
 
-else:
-    # Select Sheet
-    sheet = st.selectbox(
-        "📄 Historian Sheet",
-        list(historian.keys())
-    )
+    if st.button("📊 Show Historian"):
 
-    df = historian[sheet]
+        st.info("Scroll to the Historian Dashboard below.")
 
-    st.success(f"✅ {len(df)} Historian Records Loaded")
+    if st.button("⚙ Equipment Health"):
 
-    # Show columns for debugging (remove later if desired)
-    st.write("Available Columns:", list(df.columns))
+        st.info("Asset Health Dashboard Loaded.")
 
-    # Detect Timestamp column
-    timestamp_col = None
+with col2:
 
-    for col in df.columns:
-        if "time" in str(col).lower() or "date" in str(col).lower():
-            timestamp_col = col
-            break
+    if st.button("🧠 Root Cause"):
 
-    if timestamp_col is None:
-        st.error("❌ No Timestamp column found.")
-        st.stop()
+        st.info("Ask the AI above for Root Cause Analysis.")
 
-    # Convert timestamp
-    df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors="coerce")
+    if st.button("🛠 Maintenance"):
 
-# Numeric parameters
-numeric_cols = df.select_dtypes(include="number").columns.tolist()
+        st.info("Maintenance Records are included in AI analysis.")
 
-if len(numeric_cols) == 0:
-    st.warning("No numeric historian parameters found.")
-    st.stop()
+with col3:
 
-# Parameter selector
-parameter = st.selectbox(
-    "📊 Select Parameter",
-    numeric_cols
-)
-# Interactive Trend
-fig = go.Figure()
+    if st.button("⚠ Process Safety"):
 
-fig.add_trace(
-    go.Scatter(
-        x=df[timestamp_col],
-        y=df[parameter],
-        mode="lines",
-        name=parameter,
-        line=dict(width=2)
-    )
-)
+        st.info("Process Safety workbook is connected.")
 
-fig.update_layout(
-    title=f"{parameter} Trend",
-    xaxis_title="Time",
-    yaxis_title=parameter,
-    height=500,
-    hovermode="x unified"
-)
+    if st.button("📈 Executive KPI"):
 
-st.plotly_chart(fig, use_container_width=True)
-st.subheader("📊 Historian Statistics")
+        st.info("Executive Dashboard Loaded.")
 
-k1, k2, k3, k4 = st.columns(4)
+st.divider()
 
-k1.metric(
-    "Current",
-    f"{df[parameter].iloc[-1]:.2f}"
-)
+# ==========================================================
+# FOOTER
+# ==========================================================
 
-k2.metric(
-    "Maximum",
-    f"{df[parameter].max():.2f}"
-)
-
-k3.metric(
-    "Minimum",
-    f"{df[parameter].min():.2f}"
-)
-
-k4.metric(
-    "Average",
-    f"{df[parameter].mean():.2f}"
+st.caption(
+    "© 2026 MANU TWIN INTELLICRIT | Built by MANU TECH MINDS"
 )
