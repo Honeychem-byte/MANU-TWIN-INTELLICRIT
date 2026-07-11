@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+from utils.historian import historian_dashboard
+from utils.historian import load_historian
 from utils.ai_engine import AIPlantEngineer
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -289,13 +291,117 @@ if st.button("🚀 Ask AI", use_container_width=True):
 
 st.markdown("---")
 
-st.subheader("Plant KPIs")
+st.subheader("📊 Executive Dashboard")
 
 c1, c2, c3, c4 = st.columns(4)
 
 c1.metric("OEE", "91.8%", "+1.3%")
 c2.metric("Production", "128 MT", "+5 MT")
-c3.metric("Downtime", "38 min", "-12")
+c3.metric("Downtime", "38 min", "-12 min")
 c4.metric("AI Health", "96%", "+4%")
 
-asset_health_chart()
+st.markdown("---")
+
+left, right = st.columns([1, 2])
+
+with left:
+    asset_health_chart()
+
+with right:
+    historian_dashboard()
+st.divider()
+
+st.header("📈 LIVE DIGITAL TWIN HISTORIAN")
+
+historian = load_historian()
+
+if historian is None:
+
+    st.error("Historian Workbook Not Found")
+
+else:
+    # Select Sheet
+    sheet = st.selectbox(
+        "📄 Historian Sheet",
+        list(historian.keys())
+    )
+
+    df = historian[sheet]
+
+    st.success(f"✅ {len(df)} Historian Records Loaded")
+
+    # Show columns for debugging (remove later if desired)
+    st.write("Available Columns:", list(df.columns))
+
+    # Detect Timestamp column
+    timestamp_col = None
+
+    for col in df.columns:
+        if "time" in str(col).lower() or "date" in str(col).lower():
+            timestamp_col = col
+            break
+
+    if timestamp_col is None:
+        st.error("❌ No Timestamp column found.")
+        st.stop()
+
+    # Convert timestamp
+    df[timestamp_col] = pd.to_datetime(df[timestamp_col], errors="coerce")
+
+# Numeric parameters
+numeric_cols = df.select_dtypes(include="number").columns.tolist()
+
+if len(numeric_cols) == 0:
+    st.warning("No numeric historian parameters found.")
+    st.stop()
+
+# Parameter selector
+parameter = st.selectbox(
+    "📊 Select Parameter",
+    numeric_cols
+)
+# Interactive Trend
+fig = go.Figure()
+
+fig.add_trace(
+    go.Scatter(
+        x=df[timestamp_col],
+        y=df[parameter],
+        mode="lines",
+        name=parameter,
+        line=dict(width=2)
+    )
+)
+
+fig.update_layout(
+    title=f"{parameter} Trend",
+    xaxis_title="Time",
+    yaxis_title=parameter,
+    height=500,
+    hovermode="x unified"
+)
+
+st.plotly_chart(fig, use_container_width=True)
+st.subheader("📊 Historian Statistics")
+
+k1, k2, k3, k4 = st.columns(4)
+
+k1.metric(
+    "Current",
+    f"{df[parameter].iloc[-1]:.2f}"
+)
+
+k2.metric(
+    "Maximum",
+    f"{df[parameter].max():.2f}"
+)
+
+k3.metric(
+    "Minimum",
+    f"{df[parameter].min():.2f}"
+)
+
+k4.metric(
+    "Average",
+    f"{df[parameter].mean():.2f}"
+)
