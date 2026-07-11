@@ -1,7 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from utils.historian import historian_dashboard
 from utils.historian import load_historian
 from utils.ai_engine import AIPlantEngineer
 from datetime import datetime, timedelta
